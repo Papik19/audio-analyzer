@@ -1,6 +1,8 @@
+using Backend.Data;
 using Backend.Models;
 using Backend.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Controllers;
 
@@ -14,12 +16,43 @@ public class AnalysesController : ControllerBase
     };
 
     private readonly AudioAnalysisClient _client;
+    private readonly AppDbContext _db;
     private readonly ILogger<AnalysesController> _logger;
 
-    public AnalysesController(AudioAnalysisClient client, ILogger<AnalysesController> logger)
+    public AnalysesController(
+        AudioAnalysisClient client,
+        AppDbContext db,
+        ILogger<AnalysesController> logger)
     {
         _client = client;
+        _db = db;
         _logger = logger;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<AnalysisResult>>> GetAll(CancellationToken cancellationToken)
+    {
+        var analyses = await _db.Analyses
+            .AsNoTracking()
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Ok(analyses);
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<AnalysisResult>> GetById(int id, CancellationToken cancellationToken)
+    {
+        var analysis = await _db.Analyses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+        if (analysis is null)
+        {
+            return NotFound(new { error = "Nie znaleziono analizy o podanym identyfikatorze." });
+        }
+
+        return Ok(analysis);
     }
 
     [HttpPost]
@@ -42,7 +75,12 @@ public class AnalysesController : ControllerBase
         try
         {
             var result = await _client.AnalyzeAsync(file, cancellationToken);
-            return Ok(result);
+            result.CreatedAt = DateTime.UtcNow;
+
+            _db.Analyses.Add(result);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (AnalysisServiceException ex)
         {
@@ -60,5 +98,21 @@ public class AnalysesController : ControllerBase
         {
             return StatusCode(504, new { error = "Analiza pliku trwała zbyt długo." });
         }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        var analysis = await _db.Analyses.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+        if (analysis is null)
+        {
+            return NotFound(new { error = "Nie znaleziono analizy o podanym identyfikatorze." });
+        }
+
+        _db.Analyses.Remove(analysis);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
     }
 }

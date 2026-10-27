@@ -2,6 +2,8 @@ namespace Backend.Models;
 
 public class AnalysisResult
 {
+    public int Id { get; set; }
+    public DateTime CreatedAt { get; set; }
     public string FileName { get; set; } = string.Empty;
     public double DurationSeconds { get; set; }
     public int SampleRate { get; set; }
