@@ -15,18 +15,29 @@ public class AnalysesController : ControllerBase
         ".wav", ".mp3", ".flac", ".ogg"
     };
 
+    private static readonly Dictionary<string, string> ContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".wav"] = "audio/wav",
+        [".mp3"] = "audio/mpeg",
+        [".flac"] = "audio/flac",
+        [".ogg"] = "audio/ogg"
+    };
+
     private readonly AudioAnalysisClient _client;
     private readonly AppDbContext _db;
     private readonly ILogger<AnalysesController> _logger;
+    private readonly string _uploadsPath;
 
     public AnalysesController(
         AudioAnalysisClient client,
         AppDbContext db,
-        ILogger<AnalysesController> logger)
+        ILogger<AnalysesController> logger,
+        IWebHostEnvironment environment)
     {
         _client = client;
         _db = db;
         _logger = logger;
+        _uploadsPath = Path.Combine(environment.ContentRootPath, "Uploads");
     }
 
     [HttpGet]
@@ -55,6 +66,30 @@ public class AnalysesController : ControllerBase
         return Ok(analysis);
     }
 
+    [HttpGet("{id:int}/audio")]
+    public async Task<IActionResult> GetAudio(int id, CancellationToken cancellationToken)
+    {
+        var analysis = await _db.Analyses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+        if (analysis is null || string.IsNullOrEmpty(analysis.StoredFileName))
+        {
+            return NotFound(new { error = "Nie znaleziono pliku audio dla tej analizy." });
+        }
+
+        var path = Path.Combine(_uploadsPath, analysis.StoredFileName);
+        if (!System.IO.File.Exists(path))
+        {
+            return NotFound(new { error = "Plik audio nie istnieje na serwerze." });
+        }
+
+        var extension = Path.GetExtension(analysis.StoredFileName);
+        var contentType = ContentTypes.GetValueOrDefault(extension, "application/octet-stream");
+
+        return PhysicalFile(path, contentType, enableRangeProcessing: true);
+    }
+
     [HttpPost]
     public async Task<ActionResult<AnalysisResult>> Create(IFormFile? file, CancellationToken cancellationToken)
     {
@@ -77,8 +112,28 @@ public class AnalysesController : ControllerBase
             var result = await _client.AnalyzeAsync(file, cancellationToken);
             result.CreatedAt = DateTime.UtcNow;
 
-            _db.Analyses.Add(result);
-            await _db.SaveChangesAsync(cancellationToken);
+            var storedFileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+            var storedPath = Path.Combine(_uploadsPath, storedFileName);
+
+            try
+            {
+                Directory.CreateDirectory(_uploadsPath);
+
+                await using (var target = System.IO.File.Create(storedPath))
+                {
+                    await file.CopyToAsync(target, cancellationToken);
+                }
+
+                result.StoredFileName = storedFileName;
+
+                _db.Analyses.Add(result);
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch
+            {
+                DeleteStoredFile(storedFileName);
+                throw;
+            }
 
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
@@ -110,9 +165,32 @@ public class AnalysesController : ControllerBase
             return NotFound(new { error = "Nie znaleziono analizy o podanym identyfikatorze." });
         }
 
+        var storedFileName = analysis.StoredFileName;
+
         _db.Analyses.Remove(analysis);
         await _db.SaveChangesAsync(cancellationToken);
 
+        if (!string.IsNullOrEmpty(storedFileName))
+        {
+            DeleteStoredFile(storedFileName);
+        }
+
         return NoContent();
+    }
+
+    private void DeleteStoredFile(string storedFileName)
+    {
+        try
+        {
+            var path = Path.Combine(_uploadsPath, storedFileName);
+            if (System.IO.File.Exists(path))
+            {
+                System.IO.File.Delete(path);
+            }
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Nie udało się usunąć pliku {File}.", storedFileName);
+        }
     }
 }

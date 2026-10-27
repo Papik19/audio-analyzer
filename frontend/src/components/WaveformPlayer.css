@@ -1,0 +1,28 @@
+.player {
+  margin: 16px 0 20px;
+}
+
+.player-waveform {
+  min-height: 96px;
+  background: #f4f6f8;
+  border-radius: 8px;
+  padding: 4px 0;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.player-time {
+  font-variant-numeric: tabular-nums;
+  color: #4b5866;
+  font-size: 0.9rem;
+}
+
+.player-error {
+  color: #8a1c13;
+  font-size: 0.9rem;
+}

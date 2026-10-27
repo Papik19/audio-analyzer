@@ -1,7 +1,8 @@
-   venv/
-   __pycache__/
-   node_modules/
-   bin/
-   obj/
-   *.db
-   .vscode/
+venv/
+__pycache__/
+node_modules/
+bin/
+obj/
+*.db
+.vscode/
+Uploads/

@@ -27,6 +27,10 @@ async function request(url, options) {
   return response;
 }
 
+export function getAudioUrl(id) {
+  return `${API_URL}/${id}/audio`;
+}
+
 export async function analyzeFile(file) {
   const formData = new FormData();
   formData.append("file", file);

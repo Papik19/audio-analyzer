@@ -55,6 +55,9 @@ namespace Backend.Migrations
                     b.Property<double>("SpectralRolloffHz")
                         .HasColumnType("REAL");
 
+                    b.Property<string>("StoredFileName")
+                        .HasColumnType("TEXT");
+
                     b.Property<double>("TempoBpm")
                         .HasColumnType("REAL");
 

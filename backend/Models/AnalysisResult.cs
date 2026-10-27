@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
 namespace Backend.Models;
 
 public class AnalysisResult
@@ -15,4 +18,10 @@ public class AnalysisResult
     public double ZeroCrossingRate { get; set; }
     public List<double> MfccMean { get; set; } = new();
     public double ProcessingTimeSeconds { get; set; }
+
+    [JsonIgnore]
+    public string? StoredFileName { get; set; }
+
+    [NotMapped]
+    public bool HasAudio => !string.IsNullOrEmpty(StoredFileName);
 }
