@@ -1,5 +1,6 @@
 import { getAudioUrl } from "../api";
 import { formatDate, formatDuration } from "../format";
+import SpectrogramView from "./SpectrogramView";
 import WaveformPlayer from "./WaveformPlayer";
 
 function ResultCard({ result }) {
@@ -22,7 +23,10 @@ function ResultCard({ result }) {
       </p>
 
       {result.hasAudio ? (
-        <WaveformPlayer key={result.id} url={getAudioUrl(result.id)} />
+        <>
+          <WaveformPlayer key={`player-${result.id}`} url={getAudioUrl(result.id)} />
+          <SpectrogramView key={`spectrogram-${result.id}`} analysisId={result.id} />
+        </>
       ) : (
         <p className="muted">Brak zapisanego pliku audio dla tej analizy.</p>
       )}

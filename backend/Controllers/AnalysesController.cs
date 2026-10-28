@@ -90,6 +90,63 @@ public class AnalysesController : ControllerBase
         return PhysicalFile(path, contentType, enableRangeProcessing: true);
     }
 
+    [HttpGet("{id:int}/spectrogram")]
+    public async Task<IActionResult> GetSpectrogram(
+        int id,
+        [FromQuery] string kind = "mel",
+        CancellationToken cancellationToken = default)
+    {
+        if (kind is not ("mel" or "linear"))
+        {
+            return BadRequest(new { error = "Nieprawidłowy typ spektrogramu. Dozwolone: mel, linear." });
+        }
+
+        var analysis = await _db.Analyses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+        if (analysis is null || string.IsNullOrEmpty(analysis.StoredFileName))
+        {
+            return NotFound(new { error = "Nie znaleziono pliku audio dla tej analizy." });
+        }
+
+        var audioPath = Path.Combine(_uploadsPath, analysis.StoredFileName);
+        if (!System.IO.File.Exists(audioPath))
+        {
+            return NotFound(new { error = "Plik audio nie istnieje na serwerze." });
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(analysis.StoredFileName);
+        var imagePath = Path.Combine(_uploadsPath, $"{baseName}-{kind}.png");
+
+        if (!System.IO.File.Exists(imagePath))
+        {
+            try
+            {
+                var image = await _client.GetSpectrogramAsync(audioPath, kind, cancellationToken);
+                await System.IO.File.WriteAllBytesAsync(imagePath, image, cancellationToken);
+            }
+            catch (AnalysisServiceException ex)
+            {
+                return StatusCode(ex.StatusCode, new { error = ex.Message });
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Serwis analizy audio jest niedostępny.");
+                return StatusCode(503, new
+                {
+                    error = "Serwis analizy audio jest niedostępny. Sprawdź, czy został uruchomiony."
+                });
+            }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return StatusCode(504, new { error = "Generowanie spektrogramu trwało zbyt długo." });
+            }
+        }
+
+        return PhysicalFile(imagePath, "image/png");
+    }
+
     [HttpPost]
     public async Task<ActionResult<AnalysisResult>> Create(IFormFile? file, CancellationToken cancellationToken)
     {
@@ -131,7 +188,7 @@ public class AnalysesController : ControllerBase
             }
             catch
             {
-                DeleteStoredFile(storedFileName);
+                DeleteStoredFiles(storedFileName);
                 throw;
             }
 
@@ -172,25 +229,31 @@ public class AnalysesController : ControllerBase
 
         if (!string.IsNullOrEmpty(storedFileName))
         {
-            DeleteStoredFile(storedFileName);
+            DeleteStoredFiles(storedFileName);
         }
 
         return NoContent();
     }
 
-    private void DeleteStoredFile(string storedFileName)
+    private void DeleteStoredFiles(string storedFileName)
     {
         try
         {
-            var path = Path.Combine(_uploadsPath, storedFileName);
-            if (System.IO.File.Exists(path))
+            var audioPath = Path.Combine(_uploadsPath, storedFileName);
+            if (System.IO.File.Exists(audioPath))
             {
-                System.IO.File.Delete(path);
+                System.IO.File.Delete(audioPath);
+            }
+
+            var baseName = Path.GetFileNameWithoutExtension(storedFileName);
+            foreach (var imagePath in Directory.GetFiles(_uploadsPath, $"{baseName}-*.png"))
+            {
+                System.IO.File.Delete(imagePath);
             }
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "Nie udało się usunąć pliku {File}.", storedFileName);
+            _logger.LogWarning(ex, "Nie udało się usunąć plików analizy {File}.", storedFileName);
         }
     }
 }

@@ -31,6 +31,10 @@ export function getAudioUrl(id) {
   return `${API_URL}/${id}/audio`;
 }
 
+export function getSpectrogramUrl(id, kind) {
+  return `${API_URL}/${id}/spectrogram?kind=${kind}`;
+}
+
 export async function analyzeFile(file) {
   const formData = new FormData();
   formData.append("file", file);

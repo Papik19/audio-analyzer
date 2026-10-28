@@ -49,6 +49,25 @@ public class AudioAnalysisClient
         return result ?? throw new AnalysisServiceException(502, "Serwis analizy zwrócił pustą odpowiedź.");
     }
 
+    public async Task<byte[]> GetSpectrogramAsync(string filePath, string kind, CancellationToken cancellationToken)
+    {
+        using var content = new MultipartFormDataContent();
+        await using var stream = File.OpenRead(filePath);
+        using var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        content.Add(fileContent, "file", Path.GetFileName(filePath));
+
+        using var response = await _httpClient.PostAsync($"/spectrogram?kind={kind}", content, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new AnalysisServiceException((int)response.StatusCode, ExtractDetail(body));
+        }
+
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+    }
+
     private static string ExtractDetail(string body)
     {
         try

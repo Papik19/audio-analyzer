@@ -1,0 +1,44 @@
+.spectrogram {
+  margin: 8px 0 20px;
+}
+
+.spectrogram h3 {
+  margin: 0 0 8px;
+}
+
+.spectrogram-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.spectrogram-tabs button.tab {
+  background: #e5e9ee;
+  color: #1f2933;
+}
+
+.spectrogram-tabs button.tab:hover:not(:disabled) {
+  background: #d5dbe3;
+}
+
+.spectrogram-tabs button.tab.active,
+.spectrogram-tabs button.tab.active:hover:not(:disabled) {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.spectrogram-image {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e9ee;
+}
+
+.spectrogram-image.hidden {
+  display: none;
+}
+
+.spectrogram-error {
+  color: #8a1c13;
+  font-size: 0.9rem;
+}
