@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Backend.Data;
 using Backend.Models;
 using Backend.Services;
@@ -147,6 +148,56 @@ public class AnalysesController : ControllerBase
         return PhysicalFile(imagePath, "image/png");
     }
 
+    [HttpGet("{id:int}/timeline")]
+    public async Task<IActionResult> GetTimeline(int id, CancellationToken cancellationToken)
+    {
+        var analysis = await _db.Analyses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+        if (analysis is null || string.IsNullOrEmpty(analysis.StoredFileName))
+        {
+            return NotFound(new { error = "Nie znaleziono pliku audio dla tej analizy." });
+        }
+
+        var audioPath = Path.Combine(_uploadsPath, analysis.StoredFileName);
+        if (!System.IO.File.Exists(audioPath))
+        {
+            return NotFound(new { error = "Plik audio nie istnieje na serwerze." });
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(analysis.StoredFileName);
+        var cachePath = Path.Combine(_uploadsPath, $"{baseName}-timeline.json");
+
+        if (!System.IO.File.Exists(cachePath))
+        {
+            try
+            {
+                var data = await _client.GetTimelineAsync(audioPath, cancellationToken);
+                var json = JsonSerializer.Serialize(data, JsonSerializerOptions.Web);
+                await System.IO.File.WriteAllTextAsync(cachePath, json, cancellationToken);
+            }
+            catch (AnalysisServiceException ex)
+            {
+                return StatusCode(ex.StatusCode, new { error = ex.Message });
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Serwis analizy audio jest niedostępny.");
+                return StatusCode(503, new
+                {
+                    error = "Serwis analizy audio jest niedostępny. Sprawdź, czy został uruchomiony."
+                });
+            }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return StatusCode(504, new { error = "Wyznaczanie przebiegów w czasie trwało zbyt długo." });
+            }
+        }
+
+        return PhysicalFile(cachePath, "application/json");
+    }
+
     [HttpPost]
     public async Task<ActionResult<AnalysisResult>> Create(IFormFile? file, CancellationToken cancellationToken)
     {
@@ -246,9 +297,9 @@ public class AnalysesController : ControllerBase
             }
 
             var baseName = Path.GetFileNameWithoutExtension(storedFileName);
-            foreach (var imagePath in Directory.GetFiles(_uploadsPath, $"{baseName}-*.png"))
+            foreach (var cachedPath in Directory.GetFiles(_uploadsPath, $"{baseName}-*"))
             {
-                System.IO.File.Delete(imagePath);
+                System.IO.File.Delete(cachedPath);
             }
         }
         catch (IOException ex)

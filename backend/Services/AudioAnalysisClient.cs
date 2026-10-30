@@ -68,6 +68,26 @@ public class AudioAnalysisClient
         return await response.Content.ReadAsByteArrayAsync(cancellationToken);
     }
 
+    public async Task<TimelineData> GetTimelineAsync(string filePath, CancellationToken cancellationToken)
+    {
+        using var content = new MultipartFormDataContent();
+        await using var stream = File.OpenRead(filePath);
+        using var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        content.Add(fileContent, "file", Path.GetFileName(filePath));
+
+        using var response = await _httpClient.PostAsync("/timeline", content, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new AnalysisServiceException((int)response.StatusCode, ExtractDetail(body));
+        }
+
+        var data = JsonSerializer.Deserialize<TimelineData>(body, JsonOptions);
+        return data ?? throw new AnalysisServiceException(502, "Serwis analizy zwrócił pustą odpowiedź.");
+    }
+
     private static string ExtractDetail(string body)
     {
         try

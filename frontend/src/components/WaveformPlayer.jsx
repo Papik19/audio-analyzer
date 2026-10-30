@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { formatDuration } from "../format";
 import "./WaveformPlayer.css";
 
-function WaveformPlayer({ url }) {
+function WaveformPlayer({ url, beats = [], duration = 0, onTimeUpdate }) {
   const containerRef = useRef(null);
   const waveSurferRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [showBeats, setShowBeats] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -25,14 +26,19 @@ function WaveformPlayer({ url }) {
     });
     waveSurferRef.current = waveSurfer;
 
-    waveSurfer.on("ready", (audioDuration) => {
-      setDuration(audioDuration);
+    waveSurfer.on("ready", (loadedDuration) => {
+      setAudioDuration(loadedDuration);
       setReady(true);
     });
     waveSurfer.on("play", () => setPlaying(true));
     waveSurfer.on("pause", () => setPlaying(false));
     waveSurfer.on("finish", () => setPlaying(false));
-    waveSurfer.on("timeupdate", (time) => setCurrentTime(time));
+    waveSurfer.on("timeupdate", (time) => {
+      setCurrentTime(time);
+      if (onTimeUpdate) {
+        onTimeUpdate(time);
+      }
+    });
 
     waveSurfer.load(url).catch((err) => {
       if (err?.name !== "AbortError") {
@@ -43,7 +49,11 @@ function WaveformPlayer({ url }) {
     return () => {
       waveSurfer.destroy();
     };
-  }, [url]);
+  }, [url, onTimeUpdate]);
+
+  const overlayDuration = duration || audioDuration;
+
+  const beatPath = useMemo(() => beats.map((time) => `M${time} 0V1`).join(""), [beats]);
 
   const handlePlayPause = () => {
     waveSurferRef.current?.playPause();
@@ -51,14 +61,36 @@ function WaveformPlayer({ url }) {
 
   return (
     <div className="player">
-      <div ref={containerRef} className="player-waveform" />
+      <div className="player-wave">
+        <div ref={containerRef} className="player-waveform" />
+        {showBeats && beats.length > 0 && overlayDuration > 0 && (
+          <svg
+            className="beat-markers"
+            viewBox={`0 0 ${overlayDuration} 1`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path d={beatPath} />
+          </svg>
+        )}
+      </div>
       <div className="player-controls">
         <button type="button" onClick={handlePlayPause} disabled={!ready}>
           {playing ? "Pauza" : "Odtwórz"}
         </button>
         <span className="player-time">
-          {formatDuration(currentTime)} / {formatDuration(duration)}
+          {formatDuration(currentTime)} / {formatDuration(audioDuration)}
         </span>
+        {beats.length > 0 && (
+          <label className="player-toggle">
+            <input
+              type="checkbox"
+              checked={showBeats}
+              onChange={(event) => setShowBeats(event.target.checked)}
+            />
+            Pokaż uderzenia ({beats.length})
+          </label>
+        )}
         {!ready && !error && <span className="muted">Wczytywanie przebiegu fali...</span>}
         {error && <span className="player-error">{error}</span>}
       </div>

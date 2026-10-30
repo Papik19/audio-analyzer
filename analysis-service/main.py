@@ -15,6 +15,7 @@ app = FastAPI(title="Audio Analysis Service")
 ALLOWED_EXTENSIONS = {".wav", ".mp3", ".flac", ".ogg"}
 SAMPLE_RATE = 22050
 SPECTROGRAM_KINDS = {"mel", "linear"}
+TIMELINE_MAX_POINTS = 600
 
 
 def load_audio(file: UploadFile):
@@ -43,6 +44,14 @@ def load_audio(file: UploadFile):
         raise HTTPException(status_code=422, detail="Plik audio jest pusty.")
 
     return y, sr
+
+
+def downsample(values, max_points):
+    values = np.asarray(values)
+    if len(values) <= max_points:
+        return values
+    chunks = np.array_split(values, max_points)
+    return np.array([chunk.mean() for chunk in chunks])
 
 
 @app.get("/health")
@@ -78,6 +87,34 @@ def analyze(file: UploadFile = File(...)):
         "zero_crossing_rate": round(float(np.mean(zcr)), 4),
         "mfcc_mean": [round(float(v), 2) for v in np.mean(mfcc, axis=1)],
         "processing_time_seconds": round(time.perf_counter() - started, 2),
+    }
+
+
+@app.post("/timeline")
+def timeline(file: UploadFile = File(...)):
+    y, sr = load_audio(file)
+    hop_length = 512
+
+    rms = librosa.feature.rms(y=y, hop_length=hop_length)[0]
+    centroid = librosa.feature.spectral_centroid(y=y, sr=sr, hop_length=hop_length)[0]
+    frames = min(len(rms), len(centroid))
+    rms = rms[:frames]
+    centroid = centroid[:frames]
+    times = librosa.times_like(rms, sr=sr, hop_length=hop_length)
+
+    _, beat_frames = librosa.beat.beat_track(y=y, sr=sr, hop_length=hop_length)
+    beat_times = librosa.frames_to_time(beat_frames, sr=sr, hop_length=hop_length)
+
+    times_small = downsample(times, TIMELINE_MAX_POINTS)
+    rms_small = downsample(rms, TIMELINE_MAX_POINTS)
+    centroid_small = downsample(centroid, TIMELINE_MAX_POINTS)
+    rms_db = 20 * np.log10(np.maximum(rms_small, 1e-5))
+
+    return {
+        "beats": [round(float(t), 3) for t in beat_times],
+        "times": [round(float(t), 2) for t in times_small],
+        "rms_db": [round(float(v), 1) for v in rms_db],
+        "centroid_hz": [round(float(v), 1) for v in centroid_small],
     }
 
 

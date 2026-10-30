@@ -2,6 +2,10 @@
   margin: 16px 0 20px;
 }
 
+.player-wave {
+  position: relative;
+}
+
 .player-waveform {
   min-height: 96px;
   background: #f4f6f8;
@@ -9,9 +13,25 @@
   padding: 4px 0;
 }
 
+.beat-markers {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.beat-markers path {
+  fill: none;
+  stroke: rgba(220, 38, 38, 0.55);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .player-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 8px;
 }
@@ -20,6 +40,14 @@
   font-variant-numeric: tabular-nums;
   color: #4b5866;
   font-size: 0.9rem;
+}
+
+.player-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #4b5866;
 }
 
 .player-error {

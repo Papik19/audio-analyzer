@@ -35,6 +35,11 @@ export function getSpectrogramUrl(id, kind) {
   return `${API_URL}/${id}/spectrogram?kind=${kind}`;
 }
 
+export async function getTimeline(id) {
+  const response = await request(`${API_URL}/${id}/timeline`);
+  return response.json();
+}
+
 export async function analyzeFile(file) {
   const formData = new FormData();
   formData.append("file", file);

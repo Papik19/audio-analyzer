@@ -1,0 +1,45 @@
+.timeline {
+  margin: 8px 0 20px;
+}
+
+.timeline h3 {
+  margin: 0 0 8px;
+}
+
+.chart {
+  margin: 0 0 16px;
+}
+
+.chart figcaption {
+  font-size: 0.9rem;
+  color: #4b5866;
+  margin-bottom: 4px;
+}
+
+.chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-frame {
+  fill: #f9fafb;
+  stroke: #e5e9ee;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.chart-playhead {
+  stroke: #1f2933;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.chart-label {
+  font-size: 11px;
+  fill: #6b7785;
+}
