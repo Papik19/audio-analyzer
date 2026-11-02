@@ -14,3 +14,23 @@ export function formatDate(value) {
   const date = new Date(hasTimeZone ? value : `${value}Z`);
   return date.toLocaleString("pl-PL");
 }
+
+export function formatSigned(value, digits = 2) {
+  const rounded = Number(value.toFixed(digits));
+  if (rounded === 0) {
+    return "0";
+  }
+  return `${rounded > 0 ? "+" : ""}${rounded}`;
+}
+
+export function formatPercent(from, to) {
+  if (!from) {
+    return "–";
+  }
+
+  const rounded = Number((((to - from) / Math.abs(from)) * 100).toFixed(1));
+  if (rounded === 0) {
+    return "0%";
+  }
+  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+}

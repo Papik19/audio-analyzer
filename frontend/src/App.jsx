@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { analyzeFile, deleteAnalysis, getAnalyses } from "./api";
+import ComparisonCard from "./components/ComparisonCard";
 import HistoryList from "./components/HistoryList";
 import ResultCard from "./components/ResultCard";
 import UploadForm from "./components/UploadForm";
@@ -8,6 +9,7 @@ import "./App.css";
 function App() {
   const [history, setHistory] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [compareIds, setCompareIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -54,10 +56,27 @@ function App() {
       await deleteAnalysis(id);
       setHistory((current) => current.filter((item) => item.id !== id));
       setSelected((current) => (current && current.id === id ? null : current));
+      setCompareIds((current) => current.filter((compareId) => compareId !== id));
     } catch (err) {
       setError(err.message);
     }
   };
+
+  const handleToggleCompare = (id) => {
+    setCompareIds((current) => {
+      if (current.includes(id)) {
+        return current.filter((compareId) => compareId !== id);
+      }
+      if (current.length >= 2) {
+        return current;
+      }
+      return [...current, id];
+    });
+  };
+
+  const compared = compareIds
+    .map((id) => history.find((item) => item.id === id))
+    .filter(Boolean);
 
   return (
     <div className="app">
@@ -70,14 +89,23 @@ function App() {
       <main className="layout">
         <div className="column">
           <UploadForm onAnalyze={handleAnalyze} loading={loading} />
+          {compared.length === 2 && (
+            <ComparisonCard
+              first={compared[0]}
+              second={compared[1]}
+              onClose={() => setCompareIds([])}
+            />
+          )}
           {selected && <ResultCard result={selected} />}
         </div>
         <div className="column">
           <HistoryList
             items={history}
             selectedId={selected?.id}
+            compareIds={compareIds}
             onSelect={setSelected}
             onDelete={handleDelete}
+            onToggleCompare={handleToggleCompare}
           />
         </div>
       </main>

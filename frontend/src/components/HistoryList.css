@@ -1,0 +1,17 @@
+.history-actions {
+  align-items: center;
+}
+
+.history-compare {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #4b5866;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.history-compare input:disabled {
+  cursor: not-allowed;
+}
