@@ -1,0 +1,23 @@
+.export-buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.export-buttons button.secondary {
+  background: #e5e9ee;
+  color: #1f2933;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+
+.export-buttons button.secondary:hover:not(:disabled) {
+  background: #d5dbe3;
+}
+
+.export-buttons button.secondary:disabled {
+  background: #e5e9ee;
+  color: #a9b4c2;
+}

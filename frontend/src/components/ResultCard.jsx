@@ -1,5 +1,6 @@
 import { formatDate, formatDuration } from "../format";
 import AudioSection from "./AudioSection";
+import ExportButtons from "./ExportButtons";
 
 function ResultCard({ result }) {
   const rows = [
@@ -19,6 +20,12 @@ function ResultCard({ result }) {
       <p className="muted">
         {result.fileName} · {formatDate(result.createdAt)}
       </p>
+
+      <ExportButtons
+        items={[result]}
+        fileName={`analiza-${result.id}`}
+        label="Eksportuj wyniki:"
+      />
 
       {result.hasAudio ? (
         <AudioSection

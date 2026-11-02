@@ -1,12 +1,20 @@
 import { formatDate } from "../format";
+import ExportButtons from "./ExportButtons";
 import "./HistoryList.css";
 
 function HistoryList({ items, selectedId, compareIds, onSelect, onDelete, onToggleCompare }) {
   const compareFull = compareIds.length >= 2;
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <section className="card">
       <h2>Historia analiz</h2>
+
+      <ExportButtons
+        items={items}
+        fileName={`historia-analiz-${today}`}
+        label="Eksportuj całą historię:"
+      />
 
       {items.length > 1 && (
         <p className="muted">Zaznacz dwie analizy (pole „Porównaj”), aby zobaczyć ich zestawienie.</p>
