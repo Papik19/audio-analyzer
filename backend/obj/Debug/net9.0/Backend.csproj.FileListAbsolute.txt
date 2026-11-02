@@ -143,3 +143,4 @@ C:\Users\jmju\audio-analyzer\backend\obj\Debug\net9.0\Backend.pdb
 C:\Users\jmju\audio-analyzer\backend\obj\Debug\net9.0\Backend.genruntimeconfig.cache
 C:\Users\jmju\audio-analyzer\backend\obj\Debug\net9.0\ref\Backend.dll
 C:\Users\jmju\audio-analyzer\backend\obj\Debug\net9.0\Backend.sourcelink.json
+C:\Users\jmju\audio-analyzer\backend\bin\Debug\net9.0\Uploads\5d79be1ac2fe43ce929e6a833e016485-timeline.json

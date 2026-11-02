@@ -4,6 +4,10 @@
   background: #f4f6f8;
 }
 
+html {
+  overflow-y: scroll;
+}
+
 body {
   margin: 0;
 }

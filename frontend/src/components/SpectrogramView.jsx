@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { getSpectrogramUrl } from "../api";
 import "./SpectrogramView.css";
 
@@ -59,4 +59,4 @@ function SpectrogramView({ analysisId }) {
   );
 }
 
-export default SpectrogramView;
+export default memo(SpectrogramView);
