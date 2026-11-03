@@ -6,11 +6,13 @@ import ResultCard from "./components/ResultCard";
 import UploadForm from "./components/UploadForm";
 import "./App.css";
 
+const IDLE = { phase: "idle", percent: 0 };
+
 function App() {
   const [history, setHistory] = useState([]);
   const [selected, setSelected] = useState(null);
   const [compareIds, setCompareIds] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [upload, setUpload] = useState(IDLE);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -34,16 +36,22 @@ function App() {
   }, []);
 
   const handleAnalyze = async (file) => {
-    setLoading(true);
     setError("");
+    setUpload({ phase: "uploading", percent: 0 });
+
     try {
-      const result = await analyzeFile(file);
+      const result = await analyzeFile(file, {
+        onUploadProgress: (percent) => setUpload({ phase: "uploading", percent }),
+        onUploadComplete: () => setUpload({ phase: "analyzing", percent: 100 }),
+      });
       setSelected(result);
       setHistory((current) => [result, ...current]);
+      return true;
     } catch (err) {
       setError(err.message);
+      return false;
     } finally {
-      setLoading(false);
+      setUpload(IDLE);
     }
   };
 
@@ -88,7 +96,7 @@ function App() {
 
       <main className="layout">
         <div className="column">
-          <UploadForm onAnalyze={handleAnalyze} loading={loading} />
+          <UploadForm onAnalyze={handleAnalyze} progress={upload} />
           {compared.length === 2 && (
             <ComparisonCard
               first={compared[0]}
