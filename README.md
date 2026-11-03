@@ -1,8 +1,19 @@
 # Audio Analyzer
 
-System webowy do analizy cech audio utworów muzycznych. Użytkownik przesyła plik audio (WAV, MP3, FLAC, OGG), a system wyznacza jego cechy (tempo, głośność, centroid i rolloff spektralny, zero-crossing rate, MFCC), pokazuje przebieg fali z zaznaczonymi uderzeniami, wykresy głośności i jasności brzmienia w czasie oraz spektrogram i melspektrogram. Wyniki trafiają do historii analiz.
+System webowy do analizy cech audio utworów muzycznych. Użytkownik przesyła plik audio (WAV, MP3, FLAC, OGG), a system wyznacza jego cechy, pokazuje przebieg fali z zaznaczonymi uderzeniami, wykresy zmian głośności i jasności brzmienia w czasie oraz spektrogram i melspektrogram. Wyniki trafiają do historii analiz, którą można przeszukiwać, sortować, porównywać i eksportować.
 
 Projekt powstał w ramach pracy inżynierskiej „Projekt i implementacja systemu analizy cech audio utworów muzycznych".
+
+## Funkcje
+
+- **Przesyłanie plików**: wybór z dysku lub przeciągnięcie na stronę, walidacja formatu (WAV, MP3, FLAC, OGG) i rozmiaru (do 100 MB) przed wysłaniem, wskaźnik postępu wysyłania oraz licznik czasu trwania analizy.
+- **Cechy audio**: czas trwania, częstotliwość próbkowania, tempo (BPM), głośność (RMS i dB), centroid i rolloff spektralny, zero-crossing rate, współczynniki MFCC.
+- **Odtwarzacz z przebiegiem fali** (WaveSurfer.js): odtwarzanie, przewijanie przez kliknięcie, powiększanie fali, opcjonalne zaznaczenie wykrytych uderzeń.
+- **Przebiegi w czasie**: wykresy głośności i jasności brzmienia (centroidu spektralnego) z ruchomym znacznikiem pozycji odtwarzania.
+- **Spektrogramy**: melspektrogram i spektrogram liniowy generowane z przesłanego pliku (zapisywane w pamięci podręcznej na dysku).
+- **Historia analiz** (SQLite): wyszukiwanie po nazwie pliku, sortowanie (data, nazwa, tempo, długość), usuwanie wraz z powiązanymi plikami.
+- **Porównanie dwóch analiz**: zestawienie cech obok siebie z różnicą bezwzględną i procentową (np. ten sam utwór w WAV i MP3).
+- **Eksport wyników**: pojedyncza analiza lub cała historia (także wyniki wyszukiwania) do CSV (separator `;`, kodowanie UTF-8, gotowe do otwarcia w Excelu) lub JSON.
 
 ## Architektura
 
@@ -22,6 +33,8 @@ React (Vite) :5173  -->  ASP.NET Core Web API :5000  -->  FastAPI + Librosa :800
 - Node.js (LTS)
 - Python 3.12 lub nowszy
 - FFmpeg (dostępny w PATH)
+
+Librosa korzysta z biblioteki `numba`, która czasem nie nadąża za najnowszymi wersjami Pythona. Jeśli instalacja pakietów zakończy się błędem, użyj Pythona 3.12.
 
 ## Instalacja (jednorazowo)
 
@@ -71,7 +84,7 @@ cd frontend
 npm run dev
 ```
 
-Aplikacja jest dostępna pod adresem http://localhost:5173. Pierwsza analiza po uruchomieniu serwisu trwa dłużej (Librosa kompiluje funkcje przy pierwszym użyciu).
+Aplikacja jest dostępna pod adresem http://localhost:5173. Pierwsza analiza po uruchomieniu serwisu trwa dłużej (Librosa kompiluje funkcje przy pierwszym użyciu), a spektrogramy i przebiegi w czasie generują się przy pierwszym otwarciu analizy.
 
 ## Testy
 
@@ -83,7 +96,7 @@ cd analysis-service
 pytest -v
 ```
 
-Testy używają sztucznych sygnałów o znanych parametrach (ton 440 Hz, seria kliknięć w tempie 120 BPM), więc oczekiwane wyniki można porównać z teorią.
+Testy używają sztucznych sygnałów o znanych parametrach (ton 440 Hz, seria kliknięć w tempie 120 BPM), więc oczekiwane wyniki można porównać z teorią. Obejmują analizę cech, wykrywanie uderzeń, generowanie spektrogramów oraz obsługę błędnych danych (zły format, uszkodzony plik).
 
 ## API backendu
 
@@ -92,7 +105,7 @@ Testy używają sztucznych sygnałów o znanych parametrach (ton 440 Hz, seria k
 | POST | `/api/analyses` | Przesłanie pliku audio (pole `file`), analiza i zapis do historii |
 | GET | `/api/analyses` | Lista zapisanych analiz (od najnowszej) |
 | GET | `/api/analyses/{id}` | Szczegóły jednej analizy |
-| GET | `/api/analyses/{id}/audio` | Zapisany plik audio |
+| GET | `/api/analyses/{id}/audio` | Zapisany plik audio (obsługa żądań przedziałowych) |
 | GET | `/api/analyses/{id}/spectrogram?kind=mel\|linear` | Obraz spektrogramu (PNG) |
 | GET | `/api/analyses/{id}/timeline` | Uderzenia oraz przebiegi głośności i centroidu w czasie |
 | DELETE | `/api/analyses/{id}` | Usunięcie analizy wraz z plikami |
@@ -101,12 +114,16 @@ Serwis analizy (port 8000): `GET /health`, `POST /analyze`, `POST /timeline`, `P
 
 ## Struktura plików
 
-- `backend/Uploads/` — zapisane pliki audio i wygenerowane pliki pomocnicze (spektrogramy, przebiegi); nie trafia do repozytorium
+- `backend/Uploads/` — zapisane pliki audio oraz pliki pomocnicze (spektrogramy, przebiegi w czasie); nie trafia do repozytorium
 - `backend/audio-analyzer.db` — baza SQLite; nie trafia do repozytorium
+- `backend/Migrations/` — migracje bazy danych
 - `docs/` — materiały do pracy (zrzuty ekranu, notatki)
 
 ## Ograniczenia
 
-- Wykrywanie tempa i uderzeń bywa niedokładne dla muzyki o zmiennym tempie (np. nagrania fortepianowe), algorytm może wskazać wielokrotność lub ułamek rzeczywistego tempa.
-- Aplikacja jest przeznaczona do pracy lokalnej, bez uwierzytelniania użytkowników.
-- Maksymalny rozmiar przesyłanego pliku to 100 MB.
+- Wykrywanie tempa i uderzeń bywa niedokładne dla muzyki o zmiennym tempie (np. nagrania fortepianowe): algorytm może wskazać wielokrotność lub ułamek rzeczywistego tempa.
+- Aplikacja jest przeznaczona do pracy lokalnej, bez uwierzytelniania użytkowników i bez szyfrowania połączenia (HTTP).
+- Maksymalny rozmiar przesyłanego pliku to 100 MB, a pojedyncze żądanie do serwisu analizy ma limit czasu 5 minut.
+- Poprawność pliku jest sprawdzana po rozszerzeniu, a uszkodzone pliki są odrzucane dopiero przez serwis analizy.
+- Zapisane pliki audio nie są usuwane automatycznie, tylko razem z analizą.
+- Przebiegi w czasie są uśredniane do maksymalnie 600 punktów na wykres.
